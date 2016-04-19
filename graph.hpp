@@ -40,7 +40,7 @@ public:
 
 class Graph {
     Vertex<Place *> **branches;
-    unsigned int branchesLenght;
+    unsigned int branchesLength;
     Vertex<Place *> **places;
     unsigned int placesLength;
 

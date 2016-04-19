@@ -44,6 +44,10 @@ template<class T>
 Vertex<T>::~Vertex()
 {
     delete this->element;
+    for (typename std::list<Edge<T> *>::iterator it = this->neighbours.begin(); it != this->neighbours.end(); it++){
+        Edge<T> *edge = *it;
+        delete edge;
+    }
 }
 
 //
@@ -53,25 +57,29 @@ Vertex<T>::~Vertex()
 Graph::Graph()
 {
     this->placesLength = 0;
+    this->branchesLength = 0;
 }
 
 void Graph::populate()
 {
     // Parse first line
     unsigned int linksLength;
-    std::cin >> this->placesLength >> this->branchesLenght >> linksLength;
+    std::cin >> this->placesLength >> this->branchesLength >> linksLength;
     this->places = new Vertex<Place *> *[placesLength];
+    this->branches = new Vertex<Place *> *[branchesLength];
     for (unsigned int id = 0; id < this->placesLength; id++) {
         Place *place = new Place(id + 1);
         this->places[id] = new Vertex<Place *>(place);
     }
 
     // Parse second line
-    for (unsigned int branch = 0; branch < this->branchesLenght; branch++){
+    for (unsigned int branch = 0; branch < this->branchesLength; branch++){
         unsigned int id;
         std::cin >> id;
-        Place *place = this->places[--id]->element;
+        Vertex<Place *> *vertex = this->places[--id];
+        Place *place = vertex->element;
         place->branch = new Branch();
+        this->branches[branch] = vertex;
     }
 
     // Parse connections
@@ -91,7 +99,7 @@ void Graph::execute()
 
 void Graph::print() const
 {
-    std::cout << "Places: " << this->placesLength << ", Branches: " << this->branchesLenght << std::endl;
+    std::cout << "Places: " << this->placesLength << ", Branches: " << this->branchesLength << std::endl;
     for (unsigned int i = 0; i < this->placesLength; i++) {
         Vertex<Place *> *vertex = this->places[i];
         std::cout << "Place " << vertex->element->id << "[" << vertex << "]" << " has branch? " << (vertex->element->branch != NULL) << " is linked to: " << std::endl;
