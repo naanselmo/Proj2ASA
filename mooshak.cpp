@@ -1,11 +1,7 @@
-#include <ostream>
 #include <iostream>
-#include <stack>
-#include <map>
 #include <list>
-#include <vector>
 #include <limits>
-#include <queue>
+#include <set>
 
 #define INFINITE std::numeric_limits<int>::max()
 #define S_INDEX 0
@@ -42,7 +38,6 @@ template<class T>
 class Vertex {
 public:
     T element;
-    Vertex *parent;
     int distance;
     int h;
     std::list<Edge<T> *> edges;
@@ -70,7 +65,7 @@ public:
     virtual ~Graph();      // Deconstructs a graph.
 
 private:
-    // Runs Bellman-Ford algorithm in the source and updates the graph distance and parent values of all vertices.
+    // Runs Bellman-Ford algorithm in the source and updates the graph distance of all vertices.
     bool bellmanFord(Vertex<Place *> *source);
 
     // Runs Dijkstra's algorithm on the graph (only on branches).
@@ -78,10 +73,6 @@ private:
 
     // Transposes the graph.
     void transpose();
-
-    // Reconstructs a path based on parent values of the graph, from a given destination.
-    // Be sure to reconstruct only if the parent values are correct.
-    std::list<Vertex<Place *> *> path(Vertex<Place *> *destination);
 };
 
 Place::Place(unsigned int id) {
@@ -126,7 +117,6 @@ void Vertex<T>::addLink(Vertex<T> *const vertex, int cost) {
 template<class T>
 inline void Vertex<T>::reset() {
     this->distance = INFINITE;
-    this->parent = NULL;
 }
 
 template<class T>
@@ -317,7 +307,6 @@ bool Graph::bellmanFord(Vertex<Place *> *source) {
                     // Overflow is possible for enormous (near 2^31) weights
                     if (origin->distance != INFINITE && origin->distance + edge->cost < destination->distance) {
                         destination->distance = origin->distance + edge->cost;
-                        destination->parent = origin;
                     }
                 }
             }
@@ -352,17 +341,17 @@ void Graph::dijkstra(Vertex<Place *> *source) {
     }
 
     // Create the priority queue (reversed)
-    std::priority_queue<Vertex<Place*> *> queue;
+    std::set<Vertex<Place*> *> queue;
 
     // Insert the source into the queue, with distance 0
     source->distance = 0;
-    queue.push(source);
+    queue.insert(source);
 
     // Run dijkstra main loop
     while (!queue.empty()){
-        // Get top element from the priority queue and remove it afterwards
-        Vertex<Place *> *current = queue.top();
-        queue.pop();
+        // Get top element from the priority queue
+        Vertex<Place *> *current = *queue.begin();
+        queue.erase(current);
 
         // Iterate through every neighbour
         std::list<Edge<Place *> *> &edges = current->getEdges();
@@ -373,9 +362,8 @@ void Graph::dijkstra(Vertex<Place *> *source) {
             // If this newly discovered distance is shorter than the previous ones
             if (current->distance + edge->cost < destination->distance) {
                 destination->distance = current->distance + edge->cost;
-                // Parent isn't needed for anything, so we don't set it
-                // destination->parent = current;
-                queue.push(destination);
+                queue.erase(destination);
+                queue.insert(destination);
             }
         }
     }
@@ -408,17 +396,6 @@ void Graph::transpose() {
             origin->distance--;
         }
     }
-}
-
-std::list<Vertex<Place *> *> Graph::path(Vertex<Place *> *destination) {
-    std::list<Vertex<Place *> *> path;
-    Vertex<Place *> *current = destination;
-    while (current->parent != NULL) {
-        path.push_front(current);
-        current = current->parent;
-    }
-    path.push_front(current);
-    return path;
 }
 
 Graph::~Graph() {
