@@ -28,7 +28,7 @@ Vertex<T>::Vertex(T element) {
 
 template<class T>
 void Vertex<T>::addLink(Vertex<T> *const vertex, int cost) {
-    this->neighbours.push_back(new Edge<T>(vertex, cost));
+    this->edges.push_back(new Edge<T>(vertex, cost));
 }
 
 template<class T>
@@ -43,6 +43,11 @@ void Vertex<T>::saveDistance() {
 }
 
 template<class T>
+inline std::list<Edge<T> *> &Vertex<T>::getEdges() {
+    return this->edges;
+}
+
+template<class T>
 bool Vertex<T>::operator < (const Vertex<T>* const &v) const {
     // This is INTENTIONALLY inverted, so that higher distances are "worse"
     return distance > v->distance;
@@ -51,7 +56,7 @@ bool Vertex<T>::operator < (const Vertex<T>* const &v) const {
 template<class T>
 Vertex<T>::~Vertex() {
     delete this->element;
-    for (typename std::list<Edge<T> *>::iterator it = this->neighbours.begin(); it != this->neighbours.end(); it++) {
+    for (typename std::list<Edge<T> *>::iterator it = this->edges.begin(); it != this->edges.end(); it++) {
         Edge<T> *edge = *it;
         delete edge;
     }
@@ -110,7 +115,7 @@ void Graph::print() const {
     for (unsigned int placeIndex = PLACES_START_INDEX; placeIndex < this->placesLength; placeIndex++) {
         Vertex<Place *> *vertex = this->places[placeIndex];
         std::cout << "Place " << vertex->element->id << "[" << vertex << "]" << " has branch? " << (vertex->element->branch != NULL) << " is linked to: " << std::endl;
-        std::list<Edge<Place *> *> links = vertex->neighbours;
+        std::list<Edge<Place *> *> &links = vertex->getEdges();
         for (std::list<Edge<Place *> *>::iterator it = links.begin(); it != links.end(); it++) {
             Edge<Place *> *edge = *it;
             Vertex<Place *> *linked = edge->vertex;
@@ -134,8 +139,8 @@ bool Graph::bellmanFord(Vertex<Place *> *source) {
         for (unsigned int placeIndex = 0; placeIndex < this->placesLength; placeIndex++) {
             Vertex<Place *> *origin = places[placeIndex];
             if (origin != NULL) {
-                std::list<Edge<Place *> *> neighbours = origin->neighbours;
-                for (std::list<Edge<Place *> *>::iterator it = neighbours.begin(); it != neighbours.end(); it++) {
+                std::list<Edge<Place *> *> &edges = origin->getEdges();
+                for (std::list<Edge<Place *> *>::iterator it = edges.begin(); it != edges.end(); it++) {
                     Edge<Place *> *edge = *it;
                     Vertex<Place *> *destination = edge->vertex;
                     // If can relax, do it! Check if origin is infinite so stuff doest overflow!
@@ -155,8 +160,8 @@ bool Graph::bellmanFord(Vertex<Place *> *source) {
         // For each edge, relax if possible
         for (unsigned int place = 0; place < this->placesLength; place++) {
             Vertex<Place *> *origin = places[place];
-            std::list<Edge<Place *> *> neighbours = origin->neighbours;
-            for (std::list<Edge<Place *> *>::iterator it = neighbours.begin(); it != neighbours.end(); it++) {
+            std::list<Edge<Place *> *> &edges = origin->getEdges();
+            for (std::list<Edge<Place *> *>::iterator it = edges.begin(); it != edges.end(); it++) {
                 Edge<Place *> *edge = *it;
                 Vertex<Place *> *destination = edge->vertex;
                 // If we can relax, its because there is a negative cycle
@@ -171,10 +176,9 @@ bool Graph::bellmanFord(Vertex<Place *> *source) {
 
 void Graph::dijkstra(Vertex<Place *> *source) {
     // Initialize the graph
-    for (unsigned int placeIndex = 0; placeIndex < this->placesLength; placeIndex++) {
+    for (unsigned int placeIndex = PLACES_START_INDEX; placeIndex < this->placesLength; placeIndex++) {
         Vertex<Place *> *vertex = places[placeIndex];
-        if (vertex != NULL)
-            vertex->reset();
+        vertex->reset();
     }
 
     // Create the priority queue (reversed)
@@ -191,8 +195,8 @@ void Graph::dijkstra(Vertex<Place *> *source) {
         queue.pop();
 
         // Iterate through every neighbour
-        std::list<Edge<Place *> *> neighbours = current->neighbours;
-        for (std::list<Edge<Place *> *>::iterator it = neighbours.begin(); it != neighbours.end(); it++) {
+        std::list<Edge<Place *> *> &edges = current->getEdges();
+        for (std::list<Edge<Place *> *>::iterator it = edges.begin(); it != edges.end(); it++) {
             Edge<Place *> *edge = *it;
             Vertex<Place *> *destination = edge->vertex;
 
@@ -203,6 +207,34 @@ void Graph::dijkstra(Vertex<Place *> *source) {
                 // destination->parent = current;
                 queue.push(destination);
             }
+        }
+    }
+}
+
+void Graph::transpose() {
+    // Store the number of edges for each vertex
+    // Store it under its distance since it was ruined anyway
+    for (unsigned int placeIndex = PLACES_START_INDEX; placeIndex < this->placesLength; placeIndex++) {
+        Vertex<Place *> *vertex = places[placeIndex];
+        std::list<Edge<Place *> *> &edges = vertex->getEdges();
+        vertex->distance = edges.size();
+    }
+
+    // Iterate each vertex
+    for (unsigned int placeIndex = PLACES_START_INDEX; placeIndex < this->placesLength; placeIndex++) {
+        Vertex<Place *> *origin = places[placeIndex];
+        std::list<Edge<Place *> *> &edges = origin->getEdges();
+
+        // Since we know how many edges it has, we can avoid running this twice for the same edge
+        while (origin->distance != 0) {
+            // Get the edge and create its tranposition
+            Edge<Place *> *edge = edges.front();
+            Vertex<Place *> *destination = edge->vertex;
+            destination->addLink(origin, edge->cost);
+
+            // Destroy the edge and decrease the counter
+            edges.pop_front();
+            origin->distance--;
         }
     }
 }
@@ -237,8 +269,8 @@ void Graph::johnson() {
     // Re-weight the edges.
     for (unsigned int placeIndex = PLACES_START_INDEX; placeIndex < this->placesLength; placeIndex++) {
         Vertex<Place *> *origin = places[placeIndex];
-        std::list<Edge<Place *> *> neighbours = origin->neighbours;
-        for (std::list<Edge<Place *> *>::iterator it = neighbours.begin(); it != neighbours.end(); it++) {
+        std::list<Edge<Place *> *> &edges = origin->getEdges();
+        for (std::list<Edge<Place *> *>::iterator it = edges.begin(); it != edges.end(); it++) {
             Edge<Place *> *edge = *it;
             Vertex<Place *> *destination = edge->vertex;
             edge->cost = edge->cost + origin->h - destination->h;
@@ -285,12 +317,18 @@ void Graph::johnson() {
         std::cout << "N" << std::endl;
     } else {
         Vertex<Place *> *encounterPlace = places[encounterPlaceIndex];
+
+        // Transpose the graph
+        transpose();
+
+        // Recalculate distances from the chosen point to each branch
+        dijkstra(encounterPlace);
+
         // std::cout << "Found encounter point: " << encounterPlace->element->id << " with total loss " << minimumTotalLoss << std::endl;
         std::cout << encounterPlace->element->id << " " << minimumTotalLoss << std::endl;
         for (unsigned int branchIndex = 0; branchIndex < branchesLength; branchIndex++) {
             Vertex<Place *> *branch = branches[branchIndex];
-            dijkstra(branch);
-            std::cout << encounterPlace->distance + encounterPlace->h - branch->h << " ";
+            std::cout << branch->distance + encounterPlace->h - branch->h << " ";
             // std::cout << "Total loss from " << branch->element->id << " to encounter point " << encounterPlace->distance + encounterPlace->h - branch->h << std::endl;
         }
         std::cout << std::endl;

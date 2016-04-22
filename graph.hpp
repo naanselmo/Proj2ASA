@@ -34,14 +34,15 @@ public:
     Vertex *parent;
     int distance;
     int h;
-    std::list<Edge<T> *> neighbours;
+    std::list<Edge<T> *> edges;
 
     Vertex(T element);                                   // Creates a new vertex.
     void reset();                                        // Resets a vertex to its initial state.
     void addLink(Vertex<T> *const vertex, int cost);     // Connects the vertex with another one.
     void saveDistance();                                 // Saves distance field in h field.
-    virtual ~Vertex();                                   // Deconstructs a vertex.
+    std::list<Edge<T> *> &getEdges();                       // Returns the edges
     bool operator < (const Vertex<T>* const &v) const;   // Comparator for distances
+    virtual ~Vertex();                                   // Deconstructs a vertex.
 };
 
 class Graph {
@@ -64,9 +65,14 @@ private:
     bool bellmanFord(Vertex<Place *> *source);
 
     /**
-     * Runs johnson's algorithm on the graph (only on branches) and prints the output of the project.
+     * Runs dijkstra's algorithm on the graph (only on branches)
      */
-    void johnson();
+    void dijkstra(Vertex<Place *> *source);
+
+    /**
+     * Transposes the graph
+     */
+    void transpose();
 
     /**
      * Reconstructs a path based on parent values of the graph, from a given destination.
@@ -75,9 +81,9 @@ private:
     std::list<Vertex<Place *> *> path(Vertex<Place *> *destination);
 
     /**
-     * Runs dijkstra's algorithm on the graph (only on branches)
+     * Runs johnson's algorithm on the graph (only on branches) and prints the output of the project.
      */
-    void dijkstra(Vertex<Place *> *source);
+    void johnson();
 };
 
 #endif //GRAPH_H
