@@ -43,6 +43,12 @@ void Vertex<T>::saveDistance() {
 }
 
 template<class T>
+bool Vertex<T>::operator < (const Vertex<T>* const &v) const {
+    // This is INTENTIONALLY inverted, so that higher distances are "worse"
+    return distance > v->distance;
+};
+
+template<class T>
 Vertex<T>::~Vertex() {
     delete this->element;
     for (typename std::list<Edge<T> *>::iterator it = this->neighbours.begin(); it != this->neighbours.end(); it++) {
@@ -163,6 +169,44 @@ bool Graph::bellmanFord(Vertex<Place *> *source) {
     return true;
 }
 
+void Graph::dijkstra(Vertex<Place *> *source) {
+    // Initialize the graph
+    for (unsigned int placeIndex = 0; placeIndex < this->placesLength; placeIndex++) {
+        Vertex<Place *> *vertex = places[placeIndex];
+        if (vertex != NULL)
+            vertex->reset();
+    }
+
+    // Create the priority queue (reversed)
+    std::priority_queue<Vertex<Place*> *> queue;
+
+    // Insert the source into the queue, with distance 0
+    source->distance = 0;
+    queue.push(source);
+
+    // Run dijkstra main loop
+    while (!queue.empty()){
+        // Get top element from the priority queue and remove it afterwards
+        Vertex<Place *> *current = queue.top();
+        queue.pop();
+
+        // Iterate through every neighbour
+        std::list<Edge<Place *> *> neighbours = current->neighbours;
+        for (std::list<Edge<Place *> *>::iterator it = neighbours.begin(); it != neighbours.end(); it++) {
+            Edge<Place *> *edge = *it;
+            Vertex<Place *> *destination = edge->vertex;
+
+            // If this newly discovered distance is shorter than the previous ones
+            if (current->distance + edge->cost < destination->distance) {
+                destination->distance = current->distance + edge->cost;
+                // Parent isn't needed for anything
+                // destination->parent = current;
+                queue.push(destination);
+            }
+        }
+    }
+}
+
 std::list<Vertex<Place *> *> Graph::path(Vertex<Place *> *destination) {
     std::list<Vertex<Place *> *> path;
     Vertex<Place *> *current = destination;
@@ -205,24 +249,25 @@ void Graph::johnson() {
     delete this->places[S_INDEX];
     this->places[S_INDEX] = NULL;
 
-    // Run Dijkstra for all vertexes and update the distance matrix with the real distances by undoing the re-weight.
-    // Also calculate total loss to all places.
-    int distance[branchesLength][placesLength] = {0};
-    int totalLoss[placesLength] = {0};
+    // Array that will contain the total losses per place
+    int totalLoss[placesLength];
+    for (unsigned int placeIndex = PLACES_START_INDEX; placeIndex < placesLength; placeIndex++) {
+        totalLoss[placeIndex] = 0;
+    }
+
+    // Run Dijkstra and calculate total loss to every place, from each branch.
     for (unsigned int branchIndex = 0; branchIndex < branchesLength; branchIndex++) {
         Vertex<Place *> *source = branches[branchIndex];
-        bellmanFord(source); // <- INSERT DIJKSTRA HERE
+        dijkstra(source);
         for (unsigned int placeIndex = PLACES_START_INDEX; placeIndex < placesLength; placeIndex++) {
             Vertex<Place *> *destination = places[placeIndex];
-            // If distance is infinite then will remain infinite since we can't reach the destination from source.
+
+            // If distance is infinite then distance will remain infinite since we can't reach the destination from source.
+            // Only reason we do this rather than just sum infinite with infinite is to prevent integer overflows.
             if (destination->distance == INFINITE) {
-                distance[branchIndex][placeIndex] = INFINITE;
                 totalLoss[placeIndex] = INFINITE;
-            } else {
-                distance[branchIndex][placeIndex] = destination->distance + destination->h - source->h;
-                if (totalLoss[placeIndex] != INFINITE) {
-                    totalLoss[placeIndex] += distance[branchIndex][placeIndex];
-                }
+            } else if (totalLoss[placeIndex] != INFINITE) {
+                totalLoss[placeIndex] += destination->distance + destination->h - source->h;
             }
         }
     }
@@ -237,6 +282,11 @@ void Graph::johnson() {
         }
     }
 
+    // Run dijkstra one last time to compute the final times, if it was valid
+    if (encounterPlaceIndex != -1){
+        dijkstra(places[encounterPlaceIndex]);
+    }
+
     // Print the output based on the encounter point.
     if (encounterPlaceIndex == -1) {
         std::cout << "N" << std::endl;
@@ -244,7 +294,7 @@ void Graph::johnson() {
         // std::cout << "Found encounter point: " << places[encounterPlaceIndex]->element->id << " with total loss " << minimumTotalLoss << std::endl;
         std::cout << places[encounterPlaceIndex]->element->id << " " << minimumTotalLoss << std::endl;
         for (unsigned int branchIndex = 0; branchIndex < branchesLength; branchIndex++) {
-            std::cout << distance[branchIndex][encounterPlaceIndex] << " ";
+            std::cout << branches[branchIndex]->distance << " ";
             // std::cout << "Total loss from " << source->element->id << " to encounter point " << distance[branchIndex][encounterPlaceIndex] << std::endl;
         }
         std::cout << std::endl;

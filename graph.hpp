@@ -6,6 +6,7 @@
 #include <list>
 #include <vector>
 #include <limits>
+#include <queue>
 #include "branch.hpp"
 #include "place.hpp"
 
@@ -40,6 +41,7 @@ public:
     void addLink(Vertex<T> *const vertex, int cost);     // Connects the vertex with another one.
     void saveDistance();                                 // Saves distance field in h field.
     virtual ~Vertex();                                   // Deconstructs a vertex.
+    bool operator < (const Vertex<T>* const &v) const;   // Comparator for distances
 };
 
 class Graph {
@@ -71,6 +73,11 @@ private:
      * Be sure to reconstruct only if the parent values are correct.
      */
     std::list<Vertex<Place *> *> path(Vertex<Place *> *destination);
+
+    /**
+     * Runs dijkstra's algorithm on the graph (only on branches)
+     */
+    void dijkstra(Vertex<Place *> *source);
 };
 
 #endif //GRAPH_H
