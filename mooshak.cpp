@@ -73,18 +73,15 @@ private:
     // Runs Bellman-Ford algorithm in the source and updates the graph distance and parent values of all vertices.
     bool bellmanFord(Vertex<Place *> *source);
 
-    // Runs Dijkstra's algorithm on the graph (only on branches)
+    // Runs Dijkstra's algorithm on the graph (only on branches).
     void dijkstra(Vertex<Place *> *source);
 
-    // Transposes the graph
+    // Transposes the graph.
     void transpose();
 
     // Reconstructs a path based on parent values of the graph, from a given destination.
     // Be sure to reconstruct only if the parent values are correct.
     std::list<Vertex<Place *> *> path(Vertex<Place *> *destination);
-
-    // Runs johnson's algorithm on the graph (only on branches) and prints the output of the project.
-    void johnson();
 };
 
 Place::Place(unsigned int id) {
@@ -201,161 +198,16 @@ void Graph::populate() {
 }
 
 void Graph::execute() {
-    johnson();
-}
-
-void Graph::print() const {
-    std::cout << "Places: " << this->placesLength - 1 << ", Branches: " << this->branchesLength << std::endl;
-    for (unsigned int placeIndex = PLACES_START_INDEX; placeIndex < this->placesLength; placeIndex++) {
-        Vertex<Place *> *vertex = this->places[placeIndex];
-        std::cout << "Place " << vertex->element->id << "[" << vertex << "]" << " has branch? " << (vertex->element->branch != NULL) << " is linked to: " << std::endl;
-        std::list<Edge<Place *> *> &links = vertex->getEdges();
-        for (std::list<Edge<Place *> *>::iterator it = links.begin(); it != links.end(); it++) {
-            Edge<Place *> *edge = *it;
-            Vertex<Place *> *linked = edge->vertex;
-            std::cout << "\t-> Place " << linked->element->id << "[" << linked << "] with cost " << edge->cost << " and has branch? " << (linked->element->branch != NULL) << std::endl;
-        }
-    }
-}
-
-bool Graph::bellmanFord(Vertex<Place *> *source) {
-    // Initialize the graph
-    for (unsigned int placeIndex = 0; placeIndex < this->placesLength; placeIndex++) {
-        Vertex<Place *> *vertex = places[placeIndex];
-        if (vertex != NULL)
-            vertex->reset();
-    }
-    source->distance = 0;
-
-    // Relax edges
-    for (unsigned int iteration = 0; iteration < this->placesLength; iteration++) {
-        // For each edge, relax if possible
-        for (unsigned int placeIndex = 0; placeIndex < this->placesLength; placeIndex++) {
-            Vertex<Place *> *origin = places[placeIndex];
-            if (origin != NULL) {
-                std::list<Edge<Place *> *> &edges = origin->getEdges();
-                for (std::list<Edge<Place *> *>::iterator it = edges.begin(); it != edges.end(); it++) {
-                    Edge<Place *> *edge = *it;
-                    Vertex<Place *> *destination = edge->vertex;
-                    // If can relax, do it! Check if origin is infinite so stuff doest overflow!
-                    // Also sum overflow happens we do nothing to prevent it. SO DON'T MAKE EDGES HEIGHT HIGH!
-                    if (origin->distance != INFINITE && origin->distance + edge->cost < destination->distance) {
-                        destination->distance = origin->distance + edge->cost;
-                        destination->parent = origin;
-                    }
-                }
-            }
-        }
-    }
-
-    // Check for negative cycles
-    // No negative cycles exist so we can ignore this stop
-    /*for (unsigned int i = 0; i < this->placesLength; i++) {
-        // For each edge, relax if possible
-        for (unsigned int place = 0; place < this->placesLength; place++) {
-            Vertex<Place *> *origin = places[place];
-            std::list<Edge<Place *> *> &edges = origin->getEdges();
-            for (std::list<Edge<Place *> *>::iterator it = edges.begin(); it != edges.end(); it++) {
-                Edge<Place *> *edge = *it;
-                Vertex<Place *> *destination = edge->vertex;
-                // If we can relax, its because there is a negative cycle
-                if (origin->distance + edge->cost < destination->distance) {
-                    return false;
-                }
-            }
-        }
-    }*/
-    return true;
-}
-
-void Graph::dijkstra(Vertex<Place *> *source) {
-    // Initialize the graph
-    for (unsigned int placeIndex = PLACES_START_INDEX; placeIndex < this->placesLength; placeIndex++) {
-        Vertex<Place *> *vertex = places[placeIndex];
-        vertex->reset();
-    }
-
-    // Create the priority queue (reversed)
-    std::priority_queue<Vertex<Place*> *> queue;
-
-    // Insert the source into the queue, with distance 0
-    source->distance = 0;
-    queue.push(source);
-
-    // Run dijkstra main loop
-    while (!queue.empty()){
-        // Get top element from the priority queue and remove it afterwards
-        Vertex<Place *> *current = queue.top();
-        queue.pop();
-
-        // Iterate through every neighbour
-        std::list<Edge<Place *> *> &edges = current->getEdges();
-        for (std::list<Edge<Place *> *>::iterator it = edges.begin(); it != edges.end(); it++) {
-            Edge<Place *> *edge = *it;
-            Vertex<Place *> *destination = edge->vertex;
-
-            // If this newly discovered distance is shorter than the previous ones
-            if (current->distance + edge->cost < destination->distance) {
-                destination->distance = current->distance + edge->cost;
-                // Parent isn't needed for anything
-                // destination->parent = current;
-                queue.push(destination);
-            }
-        }
-    }
-}
-
-void Graph::transpose() {
-    // Store the number of edges for each vertex
-    // Store it under its distance since it was ruined anyway
-    for (unsigned int placeIndex = PLACES_START_INDEX; placeIndex < this->placesLength; placeIndex++) {
-        Vertex<Place *> *vertex = places[placeIndex];
-        std::list<Edge<Place *> *> &edges = vertex->getEdges();
-        vertex->distance = edges.size();
-    }
-
-    // Iterate each vertex
-    for (unsigned int placeIndex = PLACES_START_INDEX; placeIndex < this->placesLength; placeIndex++) {
-        Vertex<Place *> *origin = places[placeIndex];
-        std::list<Edge<Place *> *> &edges = origin->getEdges();
-
-        // Since we know how many edges it has, we can avoid running this twice for the same edge
-        while (origin->distance != 0) {
-            // Get the edge and create its tranposition
-            Edge<Place *> *edge = edges.front();
-            Vertex<Place *> *destination = edge->vertex;
-            destination->addLink(origin, edge->cost);
-
-            // Destroy the edge and decrease the counter
-            edges.pop_front();
-            delete edge;
-            origin->distance--;
-        }
-    }
-}
-
-std::list<Vertex<Place *> *> Graph::path(Vertex<Place *> *destination) {
-    std::list<Vertex<Place *> *> path;
-    Vertex<Place *> *current = destination;
-    while (current->parent != NULL) {
-        path.push_front(current);
-        current = current->parent;
-    }
-    path.push_front(current);
-    return path;
-}
-
-void Graph::johnson() {
-    // Create s vertex.
+    // Create the S vertex.
     this->places[S_INDEX] = new Vertex<Place *>(NULL);
-    // Add a edge from s to every vertex with cost 0.
+    // Add a edge from S to every vertex with cost 0.
     for (unsigned int placeIndex = PLACES_START_INDEX; placeIndex < this->placesLength; placeIndex++) {
         this->places[S_INDEX]->addLink(places[placeIndex], 0);
     }
-    // Run bellmanFord in s.
+    // Run the Bellman-Ford algorithm starting from S.
     bellmanFord(this->places[S_INDEX]);
 
-    // Save the distances calculated in vertex's h field
+    // Save the distances calculated in vertices' h field
     for (unsigned int placeIndex = PLACES_START_INDEX; placeIndex < this->placesLength; placeIndex++) {
         Vertex<Place *> *vertex = places[placeIndex];
         vertex->saveDistance();
@@ -372,7 +224,7 @@ void Graph::johnson() {
         }
     }
 
-    // Delete s to run Dijkstra.
+    // Delete S as it's no longer needed.
     delete this->places[S_INDEX];
     this->places[S_INDEX] = NULL;
 
@@ -426,6 +278,147 @@ void Graph::johnson() {
         }
         std::cout << std::endl;
     }
+}
+
+void Graph::print() const {
+    std::cout << "Places: " << this->placesLength - 1 << ", Branches: " << this->branchesLength << std::endl;
+    for (unsigned int placeIndex = PLACES_START_INDEX; placeIndex < this->placesLength; placeIndex++) {
+        Vertex<Place *> *vertex = this->places[placeIndex];
+        std::cout << "Place " << vertex->element->id << "[" << vertex << "]" << " has branch? " << (vertex->element->branch != NULL) << " is linked to: " << std::endl;
+        std::list<Edge<Place *> *> &links = vertex->getEdges();
+        for (std::list<Edge<Place *> *>::iterator it = links.begin(); it != links.end(); it++) {
+            Edge<Place *> *edge = *it;
+            Vertex<Place *> *linked = edge->vertex;
+            std::cout << "\t-> Place " << linked->element->id << "[" << linked << "] with cost " << edge->cost << " and has branch? " << (linked->element->branch != NULL) << std::endl;
+        }
+    }
+}
+
+bool Graph::bellmanFord(Vertex<Place *> *source) {
+    // Initialize the graph
+    for (unsigned int placeIndex = 0; placeIndex < this->placesLength; placeIndex++) {
+        Vertex<Place *> *vertex = places[placeIndex];
+        if (vertex != NULL)
+            vertex->reset();
+    }
+    source->distance = 0;
+
+    // Relax edges
+    for (unsigned int iteration = 0; iteration < this->placesLength; iteration++) {
+        // For each edge, relax if possible
+        for (unsigned int placeIndex = 0; placeIndex < this->placesLength; placeIndex++) {
+            Vertex<Place *> *origin = places[placeIndex];
+            if (origin != NULL) {
+                std::list<Edge<Place *> *> &edges = origin->getEdges();
+                for (std::list<Edge<Place *> *>::iterator it = edges.begin(); it != edges.end(); it++) {
+                    Edge<Place *> *edge = *it;
+                    Vertex<Place *> *destination = edge->vertex;
+                    // Relax whenever possible
+                    // Overflow is possible for enormous (near 2^31) weights
+                    if (origin->distance != INFINITE && origin->distance + edge->cost < destination->distance) {
+                        destination->distance = origin->distance + edge->cost;
+                        destination->parent = origin;
+                    }
+                }
+            }
+        }
+    }
+
+    // Check for negative cycles
+    // No negative cycles exist so we can ignore this check
+    /*for (unsigned int i = 0; i < this->placesLength; i++) {
+        // For each edge, relax if possible
+        for (unsigned int place = 0; place < this->placesLength; place++) {
+            Vertex<Place *> *origin = places[place];
+            std::list<Edge<Place *> *> &edges = origin->getEdges();
+            for (std::list<Edge<Place *> *>::iterator it = edges.begin(); it != edges.end(); it++) {
+                Edge<Place *> *edge = *it;
+                Vertex<Place *> *destination = edge->vertex;
+                // If we can relax, its because there is a negative cycle
+                if (origin->distance + edge->cost < destination->distance) {
+                    return false;
+                }
+            }
+        }
+    }*/
+    return true;
+}
+
+void Graph::dijkstra(Vertex<Place *> *source) {
+    // Initialize the graph
+    for (unsigned int placeIndex = PLACES_START_INDEX; placeIndex < this->placesLength; placeIndex++) {
+        Vertex<Place *> *vertex = places[placeIndex];
+        vertex->reset();
+    }
+
+    // Create the priority queue (reversed)
+    std::priority_queue<Vertex<Place*> *> queue;
+
+    // Insert the source into the queue, with distance 0
+    source->distance = 0;
+    queue.push(source);
+
+    // Run dijkstra main loop
+    while (!queue.empty()){
+        // Get top element from the priority queue and remove it afterwards
+        Vertex<Place *> *current = queue.top();
+        queue.pop();
+
+        // Iterate through every neighbour
+        std::list<Edge<Place *> *> &edges = current->getEdges();
+        for (std::list<Edge<Place *> *>::iterator it = edges.begin(); it != edges.end(); it++) {
+            Edge<Place *> *edge = *it;
+            Vertex<Place *> *destination = edge->vertex;
+
+            // If this newly discovered distance is shorter than the previous ones
+            if (current->distance + edge->cost < destination->distance) {
+                destination->distance = current->distance + edge->cost;
+                // Parent isn't needed for anything, so we don't set it
+                // destination->parent = current;
+                queue.push(destination);
+            }
+        }
+    }
+}
+
+void Graph::transpose() {
+    // Store the number of edges for each vertex
+    // Store it under its distance since it was ruined anyway
+    for (unsigned int placeIndex = PLACES_START_INDEX; placeIndex < this->placesLength; placeIndex++) {
+        Vertex<Place *> *vertex = places[placeIndex];
+        std::list<Edge<Place *> *> &edges = vertex->getEdges();
+        vertex->distance = edges.size();
+    }
+
+    // Iterate each vertex
+    for (unsigned int placeIndex = PLACES_START_INDEX; placeIndex < this->placesLength; placeIndex++) {
+        Vertex<Place *> *origin = places[placeIndex];
+        std::list<Edge<Place *> *> &edges = origin->getEdges();
+
+        // Since we know how many edges it has, we can avoid running this twice for the same edge
+        while (origin->distance != 0) {
+            // Get the edge and create its tranposition
+            Edge<Place *> *edge = edges.front();
+            Vertex<Place *> *destination = edge->vertex;
+            destination->addLink(origin, edge->cost);
+
+            // Destroy the edge and decrease the counter
+            edges.pop_front();
+            delete edge;
+            origin->distance--;
+        }
+    }
+}
+
+std::list<Vertex<Place *> *> Graph::path(Vertex<Place *> *destination) {
+    std::list<Vertex<Place *> *> path;
+    Vertex<Place *> *current = destination;
+    while (current->parent != NULL) {
+        path.push_front(current);
+        current = current->parent;
+    }
+    path.push_front(current);
+    return path;
 }
 
 Graph::~Graph() {
