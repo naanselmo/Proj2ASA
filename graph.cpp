@@ -234,6 +234,7 @@ void Graph::transpose() {
 
             // Destroy the edge and decrease the counter
             edges.pop_front();
+            delete edge;
             origin->distance--;
         }
     }
