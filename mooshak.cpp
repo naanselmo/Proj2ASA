@@ -1,22 +1,16 @@
 #include <iostream>
 #include <list>
 #include <limits>
-#include <set>
+#include <queue>
 
 #define INFINITE std::numeric_limits<int>::max()
 #define S_INDEX 0
 #define PLACES_START_INDEX 1
 
-class Branch {
-
-};
-
 class Place {
 public:
     unsigned int id;
-    Branch *branch;
 
-    Place(unsigned int id, Branch *const branch);
     Place(unsigned int id);
     virtual ~Place();
 };
@@ -40,13 +34,13 @@ public:
     T element;
     int distance;
     int h;
-    std::list<Edge<T> *> edges;
+    std::list<Edge<T> > edges;
 
     Vertex(T element);                                   // Creates a new vertex.
     void reset();                                        // Resets a vertex to its initial state.
     void addLink(Vertex<T> *const vertex, int cost);     // Connects the vertex with another one.
     void saveDistance();                                 // Saves distance field in h field.
-    std::list<Edge<T> *> &getEdges();                    // Returns the edges
+    std::list<Edge<T> > &getEdges();                    // Returns the edges
     bool operator < (const Vertex<T>* const &v) const;   // Comparator for distances
     virtual ~Vertex();                                   // Deconstructs a vertex.
 };
@@ -77,11 +71,9 @@ private:
 
 Place::Place(unsigned int id) {
     this->id = id;
-    this->branch = NULL;
 }
 
 Place::~Place() {
-    delete this->branch;
 }
 
 //
@@ -96,7 +88,6 @@ Edge<T>::Edge(Vertex<T> *const vertex, int cost) {
 
 template<class T>
 Edge<T>::~Edge() {
-
 }
 
 //
@@ -111,7 +102,7 @@ Vertex<T>::Vertex(T element) {
 
 template<class T>
 void Vertex<T>::addLink(Vertex<T> *const vertex, int cost) {
-    this->edges.push_back(new Edge<T>(vertex, cost));
+    this->edges.push_back(Edge<T>(vertex, cost));
 }
 
 template<class T>
@@ -125,7 +116,7 @@ void Vertex<T>::saveDistance() {
 }
 
 template<class T>
-inline std::list<Edge<T> *> &Vertex<T>::getEdges() {
+inline std::list<Edge<T> > &Vertex<T>::getEdges() {
     return this->edges;
 }
 
@@ -138,11 +129,14 @@ bool Vertex<T>::operator < (const Vertex<T>* const &v) const {
 template<class T>
 Vertex<T>::~Vertex() {
     delete this->element;
-    for (typename std::list<Edge<T> *>::iterator it = this->edges.begin(); it != this->edges.end(); it++) {
-        Edge<T> *edge = *it;
-        delete edge;
-    }
 }
+
+struct distance_less {
+    template<class T>
+    bool operator()(const Vertex<T>* left, const Vertex<T>* right) const {
+        return left->distance > right->distance;
+    }
+};
 
 //
 // Graph (Class)
@@ -172,10 +166,7 @@ void Graph::populate() {
     for (unsigned int branchIndex = 0; branchIndex < this->branchesLength; branchIndex++) {
         unsigned int id;
         std::cin >> id;
-        Vertex<Place *> *vertex = this->places[id];
-        Place *place = vertex->element;
-        place->branch = new Branch();
-        this->branches[branchIndex] = vertex;
+        this->branches[branchIndex] = this->places[id];
     }
 
     // Parse connections
@@ -206,11 +197,11 @@ void Graph::execute() {
     // Re-weight the edges.
     for (unsigned int placeIndex = PLACES_START_INDEX; placeIndex < this->placesLength; placeIndex++) {
         Vertex<Place *> *origin = places[placeIndex];
-        std::list<Edge<Place *> *> &edges = origin->getEdges();
-        for (std::list<Edge<Place *> *>::iterator it = edges.begin(); it != edges.end(); it++) {
-            Edge<Place *> *edge = *it;
-            Vertex<Place *> *destination = edge->vertex;
-            edge->cost = edge->cost + origin->h - destination->h;
+        std::list<Edge<Place *> > &edges = origin->getEdges();
+        for (std::list<Edge<Place *> >::iterator it = edges.begin(); it != edges.end(); it++) {
+            Edge<Place *> &edge = *it;
+            Vertex<Place *> *destination = edge.vertex;
+            edge.cost = edge.cost + origin->h - destination->h;
         }
     }
 
@@ -274,12 +265,12 @@ void Graph::print() const {
     std::cout << "Places: " << this->placesLength - 1 << ", Branches: " << this->branchesLength << std::endl;
     for (unsigned int placeIndex = PLACES_START_INDEX; placeIndex < this->placesLength; placeIndex++) {
         Vertex<Place *> *vertex = this->places[placeIndex];
-        std::cout << "Place " << vertex->element->id << "[" << vertex << "]" << " has branch? " << (vertex->element->branch != NULL) << " is linked to: " << std::endl;
-        std::list<Edge<Place *> *> &links = vertex->getEdges();
-        for (std::list<Edge<Place *> *>::iterator it = links.begin(); it != links.end(); it++) {
-            Edge<Place *> *edge = *it;
-            Vertex<Place *> *linked = edge->vertex;
-            std::cout << "\t-> Place " << linked->element->id << "[" << linked << "] with cost " << edge->cost << " and has branch? " << (linked->element->branch != NULL) << std::endl;
+        std::cout << "Place " << vertex->element->id << "[" << vertex << "]" << " is linked to: " << std::endl;
+        std::list<Edge<Place *> > &links = vertex->getEdges();
+        for (std::list<Edge<Place *> >::iterator it = links.begin(); it != links.end(); it++) {
+            Edge<Place *> &edge = *it;
+            Vertex<Place *> *linked = edge.vertex;
+            std::cout << "\t-> Place " << linked->element->id << "[" << linked << "] with cost " << edge.cost << std::endl;
         }
     }
 }
@@ -299,14 +290,14 @@ bool Graph::bellmanFord(Vertex<Place *> *source) {
         for (unsigned int placeIndex = 0; placeIndex < this->placesLength; placeIndex++) {
             Vertex<Place *> *origin = places[placeIndex];
             if (origin != NULL) {
-                std::list<Edge<Place *> *> &edges = origin->getEdges();
-                for (std::list<Edge<Place *> *>::iterator it = edges.begin(); it != edges.end(); it++) {
-                    Edge<Place *> *edge = *it;
-                    Vertex<Place *> *destination = edge->vertex;
+                std::list<Edge<Place *> > &edges = origin->getEdges();
+                for (std::list<Edge<Place *> >::iterator it = edges.begin(); it != edges.end(); it++) {
+                    Edge<Place *> &edge = *it;
+                    Vertex<Place *> *destination = edge.vertex;
                     // Relax whenever possible
                     // Overflow is possible for enormous (near 2^31) weights
-                    if (origin->distance != INFINITE && origin->distance + edge->cost < destination->distance) {
-                        destination->distance = origin->distance + edge->cost;
+                    if (origin->distance != INFINITE && origin->distance + edge.cost < destination->distance) {
+                        destination->distance = origin->distance + edge.cost;
                     }
                 }
             }
@@ -341,32 +332,48 @@ void Graph::dijkstra(Vertex<Place *> *source) {
     }
 
     // Create the priority queue (reversed)
-    std::set<Vertex<Place*> *> queue;
+    std::priority_queue<Vertex<Place*>*, std::vector<Vertex<Place*>*>, distance_less> queue;
 
     // Insert the source into the queue, with distance 0
     source->distance = 0;
-    queue.insert(source);
+    queue.push(source);
+
+    // Array that will contain the total losses per place
+    int closed[placesLength];
+    std::fill(closed, closed + placesLength, false);
+
+    // Counter that will tell when to stop iterating
+    int counter = placesLength;
 
     // Run dijkstra main loop
-    while (!queue.empty()){
+    while (!queue.empty() && counter >= 0){
         // Get top element from the priority queue
-        Vertex<Place *> *current = *queue.begin();
-        queue.erase(current);
+        Vertex<Place *> *current = queue.top();
+        queue.pop();
+
+        if (closed[current->element->id]){
+            continue;
+        }
 
         // Iterate through every neighbour
-        std::list<Edge<Place *> *> &edges = current->getEdges();
-        for (std::list<Edge<Place *> *>::iterator it = edges.begin(); it != edges.end(); it++) {
-            Edge<Place *> *edge = *it;
-            Vertex<Place *> *destination = edge->vertex;
+        std::list<Edge<Place *> > &edges = current->getEdges();
+        for (std::list<Edge<Place *> >::iterator it = edges.begin(); it != edges.end(); it++) {
+            Edge<Place *> &edge = *it;
+            Vertex<Place *> *destination = edge.vertex;
 
             // If this newly discovered distance is shorter than the previous ones
-            if (current->distance + edge->cost < destination->distance) {
-                destination->distance = current->distance + edge->cost;
-                queue.erase(destination);
-                queue.insert(destination);
+            if (current->distance + edge.cost < destination->distance) {
+                destination->distance = current->distance + edge.cost;
+                queue.push(destination);
             }
         }
+
+        // Mark the vertex as closed and decrease the counter
+        closed[current->element->id] = true;
+        counter--;
     }
+
+
 }
 
 void Graph::transpose() {
@@ -374,25 +381,24 @@ void Graph::transpose() {
     // Store it under its distance since it was ruined anyway
     for (unsigned int placeIndex = PLACES_START_INDEX; placeIndex < this->placesLength; placeIndex++) {
         Vertex<Place *> *vertex = places[placeIndex];
-        std::list<Edge<Place *> *> &edges = vertex->getEdges();
+        std::list<Edge<Place *> > &edges = vertex->getEdges();
         vertex->distance = edges.size();
     }
 
     // Iterate each vertex
     for (unsigned int placeIndex = PLACES_START_INDEX; placeIndex < this->placesLength; placeIndex++) {
         Vertex<Place *> *origin = places[placeIndex];
-        std::list<Edge<Place *> *> &edges = origin->getEdges();
+        std::list<Edge<Place *> > &edges = origin->getEdges();
 
         // Since we know how many edges it has, we can avoid running this twice for the same edge
         while (origin->distance != 0) {
             // Get the edge and create its tranposition
-            Edge<Place *> *edge = edges.front();
-            Vertex<Place *> *destination = edge->vertex;
-            destination->addLink(origin, edge->cost);
+            Edge<Place *> &edge = edges.front();
+            Vertex<Place *> *destination = edge.vertex;
+            destination->addLink(origin, edge.cost);
 
             // Destroy the edge and decrease the counter
             edges.pop_front();
-            delete edge;
             origin->distance--;
         }
     }
