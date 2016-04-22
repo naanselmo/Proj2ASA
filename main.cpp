@@ -1,8 +1,6 @@
 #include <iostream>
 #include "graph.hpp"
 
-using namespace std;
-
 int main() {
     Graph *graph = new Graph();
     graph->populate();
