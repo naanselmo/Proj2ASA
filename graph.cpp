@@ -251,9 +251,7 @@ void Graph::johnson() {
 
     // Array that will contain the total losses per place
     int totalLoss[placesLength];
-    for (unsigned int placeIndex = PLACES_START_INDEX; placeIndex < placesLength; placeIndex++) {
-        totalLoss[placeIndex] = 0;
-    }
+    std::fill(totalLoss, totalLoss + placesLength, 0);
 
     // Run Dijkstra and calculate total loss to every place, from each branch.
     for (unsigned int branchIndex = 0; branchIndex < branchesLength; branchIndex++) {
@@ -282,20 +280,18 @@ void Graph::johnson() {
         }
     }
 
-    // Run dijkstra one last time to compute the final times, if it was valid
-    if (encounterPlaceIndex != -1){
-        dijkstra(places[encounterPlaceIndex]);
-    }
-
     // Print the output based on the encounter point.
     if (encounterPlaceIndex == -1) {
         std::cout << "N" << std::endl;
     } else {
-        // std::cout << "Found encounter point: " << places[encounterPlaceIndex]->element->id << " with total loss " << minimumTotalLoss << std::endl;
-        std::cout << places[encounterPlaceIndex]->element->id << " " << minimumTotalLoss << std::endl;
+        Vertex<Place *> *encounterPlace = places[encounterPlaceIndex];
+        // std::cout << "Found encounter point: " << encounterPlace->element->id << " with total loss " << minimumTotalLoss << std::endl;
+        std::cout << encounterPlace->element->id << " " << minimumTotalLoss << std::endl;
         for (unsigned int branchIndex = 0; branchIndex < branchesLength; branchIndex++) {
-            std::cout << branches[branchIndex]->distance << " ";
-            // std::cout << "Total loss from " << source->element->id << " to encounter point " << distance[branchIndex][encounterPlaceIndex] << std::endl;
+            Vertex<Place *> *branch = branches[branchIndex];
+            dijkstra(branch);
+            std::cout << encounterPlace->distance + encounterPlace->h - branch->h << " ";
+            // std::cout << "Total loss from " << branch->element->id << " to encounter point " << encounterPlace->distance + encounterPlace->h - branch->h << std::endl;
         }
         std::cout << std::endl;
     }
