@@ -286,6 +286,10 @@ bool Graph::bellmanFord(Vertex<Place *> *source) {
 
     // Relax edges
     for (unsigned int iteration = 0; iteration < this->placesLength; iteration++) {
+        // Use this flag to check whether anything changed on the iteration
+        // If nothing changed, no need to continue as nothing will change in the next step
+        bool done = true;
+
         // For each edge, relax if possible
         for (unsigned int placeIndex = 0; placeIndex < this->placesLength; placeIndex++) {
             Vertex<Place *> *origin = places[placeIndex];
@@ -297,30 +301,18 @@ bool Graph::bellmanFord(Vertex<Place *> *source) {
                     // Relax whenever possible
                     // Overflow is possible for enormous (near 2^31) weights
                     if (origin->distance != INFINITE && origin->distance + edge.cost < destination->distance) {
+                        done = false;
                         destination->distance = origin->distance + edge.cost;
                     }
                 }
             }
+
+            if (done){
+                break;
+            }
         }
     }
 
-    // Check for negative cycles
-    // No negative cycles exist so we can ignore this check
-    /*for (unsigned int i = 0; i < this->placesLength; i++) {
-        // For each edge, relax if possible
-        for (unsigned int place = 0; place < this->placesLength; place++) {
-            Vertex<Place *> *origin = places[place];
-            std::list<Edge<Place *> *> &edges = origin->getEdges();
-            for (std::list<Edge<Place *> *>::iterator it = edges.begin(); it != edges.end(); it++) {
-                Edge<Place *> *edge = *it;
-                Vertex<Place *> *destination = edge->vertex;
-                // If we can relax, its because there is a negative cycle
-                if (origin->distance + edge->cost < destination->distance) {
-                    return false;
-                }
-            }
-        }
-    }*/
     return true;
 }
 
