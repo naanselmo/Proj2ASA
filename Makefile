@@ -1,4 +1,7 @@
-all: botnet
+all: mooshak
+
+mooshak: mooshak.cpp
+	g++ -O3 -ansi -Wall mooshak.cpp
 
 botnet: graph.o place.o branch.o main.cpp
 	g++ -O3 -ansi -Wall main.cpp graph.o place.o branch.o -lm
