@@ -40,8 +40,7 @@ public:
     void reset();                                        // Resets a vertex to its initial state.
     void addLink(Vertex<T> *const vertex, int cost);     // Connects the vertex with another one.
     void saveDistance();                                 // Saves distance field in h field.
-    std::list<Edge<T> > &getEdges();                    // Returns the edges
-    bool operator < (const Vertex<T>* const &v) const;   // Comparator for distances
+    std::list<Edge<T> > &getEdges();                     // Returns the edges
     virtual ~Vertex();                                   // Deconstructs a vertex.
 };
 
@@ -119,12 +118,6 @@ template<class T>
 inline std::list<Edge<T> > &Vertex<T>::getEdges() {
     return this->edges;
 }
-
-template<class T>
-bool Vertex<T>::operator < (const Vertex<T>* const &v) const {
-    // This is INTENTIONALLY inverted, so that higher distances are "worse"
-    return distance > v->distance;
-};
 
 template<class T>
 Vertex<T>::~Vertex() {
