@@ -330,22 +330,11 @@ void Graph::dijkstra(Vertex<Place *> *source) {
     source->distance = 0;
     queue.push(source);
 
-    // Array that will contain the total losses per place
-    int closed[placesLength];
-    std::fill(closed, closed + placesLength, false);
-
-    // Counter that will tell when to stop iterating
-    int counter = placesLength;
-
     // Run dijkstra main loop
-    while (!queue.empty() && counter >= 0){
+    while (!queue.empty()){
         // Get top element from the priority queue
         Vertex<Place *> *current = queue.top();
         queue.pop();
-
-        if (closed[current->element->id]){
-            continue;
-        }
 
         // Iterate through every neighbour
         std::list<Edge<Place *> > &edges = current->getEdges();
@@ -359,10 +348,6 @@ void Graph::dijkstra(Vertex<Place *> *source) {
                 queue.push(destination);
             }
         }
-
-        // Mark the vertex as closed and decrease the counter
-        closed[current->element->id] = true;
-        counter--;
     }
 
 
